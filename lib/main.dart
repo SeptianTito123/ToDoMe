@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'screens/login_screen.dart'; // <-- 1. Impor LoginScreen
+import 'screens/auth_check_screen.dart'; // <-- 1. Impor "Gerbang"
 
 void main() {
   runApp(const MyApp());
@@ -13,13 +13,13 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'To Do Me',
       theme: ThemeData(
-        primarySwatch: Colors.blue,
+        primarySwatch: Colors.lightGreen,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      debugShowCheckedModeBanner: false, // Hilangkan banner "DEBUG"
-      
-      // Catatan: Arahkan 'home' ke LoginScreen
-      home: const LoginScreen(), 
+      debugShowCheckedModeBanner: false,
+
+      // 2. Arahkan 'home' ke AuthCheckScreen
+      home: const AuthCheckScreen(), 
     );
   }
 }

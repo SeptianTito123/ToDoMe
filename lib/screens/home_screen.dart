@@ -1,52 +1,270 @@
-import 'package:flutter/material.dart';
-import '../services/api_service.dart'; // Impor ApiService
-import 'login_screen.dart'; // Impor LoginScreen (untuk tujuan redirect)
+import 'package:flutter/material.dart' hide FilterCallback;
+import 'package:intl/intl.dart';
+import 'package:todome/screens/task_detail_screen.dart';
+import 'package:todome/utils/time_helper.dart';
+import '../models/task.dart';
+import '../models/category.dart';
+import '../models/subtask.dart';
+import '../widgets/app_drawer.dart';
+
+// Tipe data untuk callback
+typedef TaskUpdateCallback = Function(Task task, Map<String, dynamic> data);
 
 class HomeScreen extends StatelessWidget {
-  // Menghapus 'const' dari konstruktor karena _apiService
-  HomeScreen({Key? key}) : super(key: key);
+  // --- Parameter ---
+  final List<Task> ongoingTasks;
+  final List<Task> overdueTasks;
+  final List<Task> completedTasks;
 
-  // Buat instance ApiService
-  final ApiService _apiService = ApiService();
+  final RefreshCallback onRefresh;
+  final List<Category> categories;
+  final TaskFilterType currentFilterType;
+  final int? selectedCategoryId;
+  final FilterCallback onFilterSelected;
+  final TaskUpdateCallback onUpdateTask;
 
-  // Buat fungsi helper untuk logout
-  void _logout(BuildContext context) async {
-    try {
-      // Panggil API logout (hapus token di server & HP)
-      await _apiService.logout();
-      
-      // Kembali ke LoginScreen, hancurkan halaman ini (user tdk bisa "back")
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-      );
-    } catch (e) {
-      // Tampilkan error jika logout gagal (jarang terjadi)
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal logout: $e')),
-      );
-    }
-  }
+  // --- Parameter Buka/Tutup ---
+  final bool isOngoingExpanded;
+  final bool isOverdueExpanded;
+  final bool isCompletedExpanded;
+  final Function(bool) onOngoingToggled;
+  final Function(bool) onOverdueToggled;
+  final Function(bool) onCompletedToggled;
+
+  HomeScreen({
+    Key? key,
+    required this.ongoingTasks,
+    required this.overdueTasks,
+    required this.completedTasks,
+    required this.onRefresh,
+    required this.categories,
+    required this.currentFilterType,
+    required this.selectedCategoryId,
+    required this.onFilterSelected,
+    required this.onUpdateTask,
+
+    // --- TAMBAHKAN KE CONSTRUCTOR ---
+    required this.isOngoingExpanded,
+    required this.isOverdueExpanded,
+    required this.isCompletedExpanded,
+    required this.onOngoingToggled,
+    required this.onOverdueToggled,
+    required this.onCompletedToggled,
+  }) : super(key: key);
+
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('To Do Me'),
-        // Tambahkan tombol 'actions' (tombol di kanan)
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Logout',
-            onPressed: () {
-              _logout(context); // Panggil fungsi logout saat ditekan
+    return Column(
+      children: [
+        _buildCategoryChips(),
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: onRefresh,
+            child: _buildTaskList(context),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // --- Widget Filter Kategori (Tidak berubah) ---
+  Widget _buildCategoryChips() {
+    return Container(
+      height: 50,
+      color: Colors.white,
+      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: categories.length + 1,
+        itemBuilder: (context, index) {
+          bool isSelected;
+          String label;
+          if (index == 0) {
+            label = "Semua";
+            isSelected = currentFilterType != TaskFilterType.category;
+          } else {
+            final category = categories[index - 1];
+            label = category.name;
+            isSelected = currentFilterType == TaskFilterType.category &&
+                        selectedCategoryId == category.id;
+          }
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4.0),
+            child: ChoiceChip(
+              label: Text(label),
+              selected: isSelected,
+              onSelected: (bool selected) {
+                if (index == 0) {
+                  onFilterSelected(TaskFilterType.all);
+                } else {
+                  onFilterSelected(TaskFilterType.category,
+                      categoryId: categories[index - 1].id);
+                }
+              },
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // --- Widget Daftar Tugas ---
+  Widget _buildTaskList(BuildContext context) {
+    if (ongoingTasks.isEmpty && overdueTasks.isEmpty && completedTasks.isEmpty) {
+      return LayoutBuilder(builder: (context, constraints) {
+        return SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: const Center(
+              child: Text('Tidak ada tugas di daftar ini.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 18, color: Colors.grey),
+              ),
+            ),
+          ),
+        );
+      });
+    }
+
+    return ListView(
+      padding: const EdgeInsets.all(8.0),
+      children: [
+
+        // --- 1. GRUP TUGAS AKTIF ---
+        _buildTaskSection(
+          context,
+          'Tugas Aktif',
+          ongoingTasks,
+          isExpanded: isOngoingExpanded,
+          onToggled: onOngoingToggled,
+        ),
+
+        // --- 2. GRUP TERLAMBAT ---
+        _buildTaskSection(
+          context,
+          'Terlambat',
+          overdueTasks,
+          isExpanded: isOverdueExpanded,
+          onToggled: onOverdueToggled,
+          isOverdue: true,
+        ),
+
+        // --- 3. GRUP SELESAI ---
+        _buildTaskSection(
+          context,
+          'Selesai',
+          completedTasks,
+          isExpanded: isCompletedExpanded,
+          onToggled: onCompletedToggled,
+        ),
+      ],
+    );
+  }
+
+  // --- HELPER: Widget untuk 1 Grup (ExpansionTile) ---
+  Widget _buildTaskSection(
+      BuildContext context, String title, List<Task> tasks,
+      {required bool isExpanded,
+      required Function(bool) onToggled,
+      bool isOverdue = false}) {
+
+    if (tasks.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 3.0),
+        child: ExpansionTile(
+          shape: const Border(),
+          collapsedShape: const Border(),
+
+          title: Text(
+            '$title (${tasks.length})',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: isOverdue ? Colors.red : Colors.black,
+            ),
+          ),
+
+          // Perubahan: gunakan initiallyExpanded (bukan isExpanded)
+          initiallyExpanded: isExpanded,
+          onExpansionChanged: onToggled,
+
+          childrenPadding: const EdgeInsets.only(bottom: 8.0),
+          children: tasks.map((task) {
+            return _buildTaskListItem(context, task);
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  // --- HELPER: Widget untuk 1 Item Tugas (ListTile) ---
+  Widget _buildTaskListItem(BuildContext context, Task task) {
+    final timeRemaining = TimeHelper.getRemainingTime(task.deadline);
+
+    return Opacity(
+      opacity: task.statusSelesai ? 0.6 : 1.0,
+      child: Card(
+        elevation: 0,
+        color: Colors.blue[50],
+        margin: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 10.0),
+        child: ListTile(
+          dense: true,
+          leading: Checkbox(
+            value: task.statusSelesai,
+            onChanged: (bool? newValue) {
+              if (newValue == null) return;
+              onUpdateTask(task, {'status_selesai': newValue});
             },
           ),
-        ],
-      ),
-      body: const Center(
-        child: Text(
-          'Selamat Datang! Login Berhasil.',
-          style: TextStyle(fontSize: 20),
+
+          title: Text(
+            task.judul,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              decoration: task.statusSelesai
+                  ? TextDecoration.lineThrough
+                  : TextDecoration.none,
+            ),
+          ),
+          subtitle: timeRemaining.isNotEmpty
+              ? Text(
+                  timeRemaining,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: timeRemaining == 'Terlambat' ? Colors.red : Colors.blueGrey,
+                  ),
+                )
+              : null,
+
+          trailing: IconButton(
+            icon: Icon(
+              task.isStarred ? Icons.star : Icons.star_border,
+              color: task.isStarred ? Colors.amber : Colors.grey,
+            ),
+            onPressed: () {
+              onUpdateTask(task, {'is_starred': !task.isStarred});
+            },
+          ),
+
+          onTap: () async {
+            final bool? dataDiperbarui = await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => TaskDetailScreen(task: task),
+              ),
+            );
+
+            if (dataDiperbarui == true) {
+              onRefresh();
+            }
+          },
         ),
       ),
     );

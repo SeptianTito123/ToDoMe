@@ -1,57 +1,75 @@
-import 'dart:convert'; // Diperlukan untuk jsonDecode dan jsonEncode
+// lib/models/task.dart
 
-// Fungsi helper untuk mengubah List<dynamic> dari API menjadi List<Task>
+import 'dart:convert';
+import 'category.dart';
+import 'subtask.dart';
+
 List<Task> taskFromJson(String str) => List<Task>.from(json.decode(str).map((x) => Task.fromJson(x)));
 
-// Fungsi helper untuk mengubah satu objek Task menjadi String JSON (untuk dikirim ke API)
-String taskToJson(Task data) => json.encode(data.toJson());
+String taskToJson(List<Task> data) => json.encode(List<dynamic>.from(data.map((x) => x.toJson())));
 
 class Task {
-    // Properti ini HARUS SAMA dengan nama kolom di database/API Anda
     int id;
+    int userId;
     String judul;
-    String? deskripsi; // Boleh null
+    String? deskripsi;
     bool statusSelesai;
-    DateTime? deadline; // Boleh null
+    bool isStarred;
+    DateTime? deadline;
     DateTime createdAt;
     DateTime updatedAt;
+    List<Category>? categories; 
+    List<Subtask>? subtasks;
 
     Task({
         required this.id,
+        required this.userId,
         required this.judul,
         this.deskripsi,
         required this.statusSelesai,
+        required this.isStarred,
         this.deadline,
         required this.createdAt,
         required this.updatedAt,
+        this.categories, 
+        this.subtasks,
     });
 
-    // Factory constructor untuk "membangun" objek Task dari data JSON
-    // Ini adalah "penerjemah" dari Laravel -> Flutter
     factory Task.fromJson(Map<String, dynamic> json) => Task(
         id: json["id"],
+        userId: json["user_id"],
         judul: json["judul"],
         deskripsi: json["deskripsi"],
-
-        // API kita mengirimkan 'status_selesai' sebagai 0 atau 1 (boolean di MySQL)
-        // Kode ini mengubah angka 0/1 itu jadi true/false di Dart
-        statusSelesai: json["status_selesai"] == 1 || json["status_selesai"] == true, 
-
-        // API kita mengirim 'deadline', 'created_at', 'updated_at' sebagai String
-        // Kita ubah menjadi objek DateTime di Dart
+        statusSelesai: json["status_selesai"] == 1 || json["status_selesai"] == true,
+        isStarred: json["is_starred"] == 1 || json["is_starred"] == true,
         deadline: json["deadline"] == null ? null : DateTime.parse(json["deadline"]),
         createdAt: DateTime.parse(json["created_at"]),
         updatedAt: DateTime.parse(json["updated_at"]),
+        categories: json["categories"] == null
+            ? []
+            : List<Category>.from(json["categories"]!.map((x) => Category.fromJson(x))),
+        subtasks: json["subtasks"] == null
+          ? []
+          : List<Subtask>.from(json["subtasks"]!.map((x) => Subtask.fromJson(x))),
     );
 
-    // Method untuk "mengemas" objek Task menjadi JSON
-    // Ini adalah "penerjemah" dari Flutter -> Laravel (saat kita membuat/update)
     Map<String, dynamic> toJson() => {
-        // "id": id, // Kita tidak perlu mengirim ID saat membuat data baru
+        "id": id,
+        "user_id": userId,
         "judul": judul,
         "deskripsi": deskripsi,
         "status_selesai": statusSelesai,
-        "deadline": deadline?.toIso8601String(), // '?' handle jika null
-        // Kita tidak perlu mengirim created_at/updated_at, Laravel mengurusnya
+        "is_starred": isStarred,
+        "deadline": deadline?.toIso8601String(),
+        "created_at": createdAt.toIso8601String(),
+        "updated_at": updatedAt.toIso8601String(),
+        "categories": categories == null
+            ? []
+            : List<dynamic>.from(categories!.map((x) => x.toJson())),
+        "subtasks": subtasks == null
+            ? []
+            : List<dynamic>.from(subtasks!.map((x) => x.toJson())),
     };
 }
+
+// <-- 2. KELAS KATEGORI YANG LAMA DIHAPUS DARI SINI
