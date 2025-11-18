@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart'; // Impor "Otak" kita
-import 'home_screen.dart'; // Halaman tujuan
 import 'register_screen.dart'; // Halaman register
+import 'main_screen.dart'; // Halaman tujuan
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -46,7 +46,7 @@ class _LoginScreenState extends State<LoginScreen> {
         if (loginSuccess) {
           // Jika sukses: Pindah ke HomeScreen
           Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => HomeScreen()), // Hapus 'const'
+            MaterialPageRoute(builder: (_) => const MainScreen()), // Hapus 'const'
           );
         } else {
           // Jika gagal: Tampilkan pesan error (Snackbar)

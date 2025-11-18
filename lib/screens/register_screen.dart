@@ -45,7 +45,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
           _nameController.text,
           _emailController.text,
           _passwordController.text,
-          _passwordConfirmController.text,
         );
 
         if (registerSuccess) {
