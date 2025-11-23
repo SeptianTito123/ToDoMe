@@ -256,3 +256,104 @@ URL::forceRootUrl('http://127.0.0.1:8000');
 ```
 
 ---
+---
+
+## 12. Integrasi Calendar (Table Calendar + Google Calendar API)
+
+Jika Anda ingin menambahkan fitur kalender (misalnya untuk menampilkan agenda, tugas per hari, atau integrasi Google Calendar), ikuti langkah-langkah berikut.
+
+---
+
+### 12.1 Instalasi Package `table_calendar`
+
+Anda dapat menambahkan package menggunakan salah satu dari dua cara berikut.
+
+### Cara 1 — Instalasi via Terminal (Rekomendasi)
+Buka terminal di VS Code atau Android Studio (pastikan Anda berada di folder project `todome`), kemudian jalankan:
+
+```bash
+flutter pub add table_calendar
+```
+
+---
+
+### Cara 2 — Tambahkan Manual melalui `pubspec.yaml`
+
+Jika instalasi via terminal gagal, Anda bisa menambahkannya secara manual:
+
+1. Buka file `pubspec.yaml`.
+2. Cari bagian:
+
+   ```yaml
+   dependencies:
+   ```
+3. Tambahkan baris berikut di bawah package lain seperti `fl_chart` atau `intl`:
+
+   ```yaml
+   # --- TAMBAHKAN INI ---
+   table_calendar: ^3.1.2
+   ```
+
+Contoh struktur:
+
+```yaml
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Package yang sudah ada
+  fl_chart: ^0.68.0
+  cupertino_icons: ^1.0.8
+  http: ^1.5.0
+  flutter_secure_storage: ^9.2.4
+  intl: ^0.20.2
+  google_sign_in: ^6.2.1
+  googleapis: ^13.1.0 
+  extension_google_sign_in_as_googleapis_auth: ^2.0.7
+
+  # --- TAMBAHKAN INI ---
+  table_calendar: ^3.1.2
+```
+
+Setelah itu, **simpan file** (`Ctrl+S` / `Cmd+S`). VS Code biasanya akan menjalankan `flutter pub get` secara otomatis.
+
+---
+
+## 12.2 Aktivasi Google Calendar API (Wajib untuk Integrasi Calendar)
+
+Agar akses Google Calendar tidak menghasilkan error seperti:
+
+> **403 Forbidden – Calendar API has not been used in project**
+
+Anda harus mengaktifkan API-nya di Google Cloud Console.
+
+### Langkah-langkah:
+
+1. Buka **Google Cloud Console**.
+2. Pilih project yang sama dengan yang Anda gunakan untuk **Google Sign-In** aplikasi ini.
+3. Masuk ke menu:
+   ```
+   APIs & Services → Library
+   ```
+4. Pada kolom pencarian, ketik:
+   ```
+   Google Calendar API
+   ```
+5. Klik hasil yang muncul, lalu tekan tombol:
+   ```
+   ENABLE
+   ```
+6. (Opsional namun direkomendasikan)  
+   Pada menu:
+   ```
+   APIs & Services → OAuth Consent Screen
+   ```
+   Tambahkan scope berikut jika diinginkan:
+   ```
+   /auth/calendar.events
+   ```
+
+Untuk mode pengembangan (Developer Mode), biasanya cukup **mengaktifkan** Calendar API saja.
+
+---
+
