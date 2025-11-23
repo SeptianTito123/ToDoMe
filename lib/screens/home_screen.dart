@@ -6,6 +6,7 @@ import '../models/task.dart';
 import '../models/category.dart';
 import '../models/subtask.dart';
 import '../widgets/app_drawer.dart';
+import '../widgets/task_tile.dart'; // <--- 1. JANGAN LUPA IMPORT INI
 
 // Tipe data untuk callback
 typedef TaskUpdateCallback = Function(Task task, Map<String, dynamic> data);
@@ -43,7 +44,6 @@ class HomeScreen extends StatelessWidget {
     required this.onFilterSelected,
     required this.onUpdateTask,
 
-    // --- TAMBAHKAN KE CONSTRUCTOR ---
     required this.isOngoingExpanded,
     required this.isOverdueExpanded,
     required this.isCompletedExpanded,
@@ -68,7 +68,7 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  // --- Widget Filter Kategori (Tidak berubah) ---
+  // --- Widget Filter Kategori ---
   Widget _buildCategoryChips() {
     return Container(
       height: 50,
@@ -131,7 +131,6 @@ class HomeScreen extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(8.0),
       children: [
-
         // --- 1. GRUP TUGAS AKTIF ---
         _buildTaskSection(
           context,
@@ -163,7 +162,7 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  // --- HELPER: Widget untuk 1 Grup (ExpansionTile) ---
+  // --- HELPER: Widget untuk 1 Grup ---
   Widget _buildTaskSection(
       BuildContext context, String title, List<Task> tasks,
       {required bool isExpanded,
@@ -190,7 +189,6 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
 
-          // Perubahan: gunakan initiallyExpanded (bukan isExpanded)
           initiallyExpanded: isExpanded,
           onExpansionChanged: onToggled,
 
@@ -203,70 +201,33 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  // --- HELPER: Widget untuk 1 Item Tugas (ListTile) ---
+  // --- HELPER: Widget untuk 1 Item Tugas (MENGGUNAKAN TASK TILE) ---
   Widget _buildTaskListItem(BuildContext context, Task task) {
-    final timeRemaining = TimeHelper.getRemainingTime(task.deadline);
-
-    return Opacity(
-      opacity: task.statusSelesai ? 0.6 : 1.0,
-      child: Card(
-        elevation: 0,
-        color: Colors.blue[50],
-        margin: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 10.0),
-        child: ListTile(
-          dense: true,
-          leading: Checkbox(
-            value: task.statusSelesai,
-            onChanged: (bool? newValue) {
-              if (newValue == null) return;
-              onUpdateTask(task, {'status_selesai': newValue});
-            },
+    // 2. KITA GUNAKAN WIDGET TASK TILE DISINI
+    return TaskTile(
+      task: task,
+      // A. Aksi Checklist
+      onStatusChanged: (bool? newValue) {
+        if (newValue == null) return;
+        onUpdateTask(task, {'status_selesai': newValue});
+      },
+      // B. Aksi Bintang
+      onStarToggled: () {
+        onUpdateTask(task, {'is_starred': !task.isStarred});
+      },
+      // C. Aksi Klik (Detail)
+      onTap: () async {
+        final bool? dataDiperbarui = await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => TaskDetailScreen(task: task),
           ),
+        );
 
-          title: Text(
-            task.judul,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-              decoration: task.statusSelesai
-                  ? TextDecoration.lineThrough
-                  : TextDecoration.none,
-            ),
-          ),
-          subtitle: timeRemaining.isNotEmpty
-              ? Text(
-                  timeRemaining,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: timeRemaining == 'Terlambat' ? Colors.red : Colors.blueGrey,
-                  ),
-                )
-              : null,
-
-          trailing: IconButton(
-            icon: Icon(
-              task.isStarred ? Icons.star : Icons.star_border,
-              color: task.isStarred ? Colors.amber : Colors.grey,
-            ),
-            onPressed: () {
-              onUpdateTask(task, {'is_starred': !task.isStarred});
-            },
-          ),
-
-          onTap: () async {
-            final bool? dataDiperbarui = await Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => TaskDetailScreen(task: task),
-              ),
-            );
-
-            if (dataDiperbarui == true) {
-              onRefresh();
-            }
-          },
-        ),
-      ),
+        if (dataDiperbarui == true) {
+          onRefresh();
+        }
+      },
     );
   }
 }

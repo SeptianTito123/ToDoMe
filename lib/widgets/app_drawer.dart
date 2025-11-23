@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/category.dart';
 
-// Enum untuk tipe filter
 enum TaskFilterType { all, starred, category }
-
-// Callback untuk memberitahu MainScreen filter apa yang dipilih
 typedef FilterCallback = void Function(TaskFilterType type, {int? categoryId});
 
 class AppDrawer extends StatelessWidget {
@@ -13,8 +10,10 @@ class AppDrawer extends StatelessWidget {
   final int starredTasksCount;
   final FilterCallback onFilterSelected;
   final VoidCallback onAddCategory;
+  
+  // Callback KHUSUS untuk buka halaman Bintang
+  final VoidCallback onOpenStarredPage; 
 
-  // --- PARAMETER BARU ---
   final bool isKategoriExpanded;
   final Function(bool) onKategoriToggled;
 
@@ -25,7 +24,7 @@ class AppDrawer extends StatelessWidget {
     required this.starredTasksCount,
     required this.onFilterSelected,
     required this.onAddCategory,
-    // --- TAMBAHKAN KE CONSTRUCTOR ---
+    required this.onOpenStarredPage, // <--- Tambahkan ini
     required this.isKategoriExpanded,
     required this.onKategoriToggled,
   }) : super(key: key);
@@ -39,29 +38,28 @@ class AppDrawer extends StatelessWidget {
           const UserAccountsDrawerHeader(
             accountName: Text("To Do Me"),
             accountEmail: Text("Atur semua tugasmu"),
+            decoration: BoxDecoration(color: Colors.purple), // Sesuaikan warna header
           ),
 
+          // --- MENU BINTANGI TUGAS (DIUBAH) ---
           ListTile(
             leading: const Icon(Icons.star, color: Colors.amber),
             title: const Text('Bintangi Tugas'),
             trailing: Text(starredTasksCount.toString()),
             onTap: () {
-              onFilterSelected(TaskFilterType.starred);
-              Navigator.pop(context);
+              Navigator.pop(context); // Tutup drawer dulu
+              onOpenStarredPage(); // Panggil fungsi navigasi
             },
           ),
 
           const Divider(),
 
-          // --- Filter Kategori (ExpansionTile) ---
+          // --- MENU KATEGORI ---
           ExpansionTile(
             leading: const Icon(Icons.category),
             title: const Text('Kategori'),
-
-            // Gunakan initiallyExpanded (bukan isExpanded)
             initiallyExpanded: isKategoriExpanded,
             onExpansionChanged: onKategoriToggled,
-
             children: [
               ListTile(
                 contentPadding: const EdgeInsets.only(left: 32.0, right: 16.0),
@@ -70,6 +68,9 @@ class AppDrawer extends StatelessWidget {
                 trailing: Text(allTasksCount.toString()),
                 onTap: () {
                   onFilterSelected(TaskFilterType.all);
+                  // Navigator.pop(context); // AppDrawer handle pop via MainScreen atau disini, terserah logika sebelumnya.
+                  // Agar aman dan konsisten dengan MainScreen yang sudah diperbaiki sebelumnya:
+                  // Biarkan MainScreen yang menangani state, tapi Drawer harus tutup.
                   Navigator.pop(context);
                 },
               ),
