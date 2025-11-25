@@ -1,6 +1,9 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.example.todome">
-        <application
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  package="com.example.todome">
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
+    <application
         android:label="todome"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
