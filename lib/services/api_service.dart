@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/foundation.dart' hide Category; // Hide Category bawaan Flutter
+import 'package:flutter/foundation.dart' hide Category;
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/task.dart';
@@ -317,6 +317,19 @@ class ApiService {
       return jsonDecode(response.body);
     } else {
       throw Exception("Gagal update profil");
+    }
+  }
+
+  Future<bool> deleteCategory(int id) async {
+    final response = await http.delete(
+      Uri.parse('$_baseUrl/categories/$id'),
+      headers: await _getHeaders(),
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 204) {
+      return true;
+    } else {
+      throw Exception('Gagal menghapus kategori');
     }
   }
 }

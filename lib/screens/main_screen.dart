@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'home_screen.dart';
 import 'calendar_screen.dart';
 import 'profile_screen.dart'; 
-import 'starred_tasks_screen.dart'; // <--- FILE BARU (Halaman Bintang)
+import 'starred_tasks_screen.dart'; 
 
 import '../models/task.dart';
 import '../models/category.dart';
@@ -91,8 +91,6 @@ class _MainScreenState extends State<MainScreen> {
 
     setState(() {
       // Filter Awal (Kategori atau Semua)
-      // Catatan: Filter 'starred' sekarang ditangani halaman terpisah,
-      // jadi logic di sini fokus ke Category & All.
       switch (_currentFilterType) {
         case TaskFilterType.category:
           tempTasks = _allTasks.where((task) {
@@ -110,7 +108,7 @@ class _MainScreenState extends State<MainScreen> {
           }
           break;
         case TaskFilterType.starred:
-          // Fallback jika masih terpilih starred (meski harusnya navigasi pindah)
+          // Fallback jika masih terpilih starred
           tempTasks = _allTasks.where((t) => t.isStarred).toList();
           _appBarTitle = 'Bintangi Tugas';
           break;
@@ -142,25 +140,23 @@ class _MainScreenState extends State<MainScreen> {
     });
   }
 
-  // --- 3. NAVIGASI KHUSUS HALAMAN BINTANG (BARU) ---
+  // --- 3. NAVIGASI KHUSUS HALAMAN BINTANG ---
   void _navigateToStarredPage() {
-    // Navigasi Push ke halaman baru
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => StarredTasksScreen(
           allTasks: _allTasks, 
-          onUpdateTask: _handleTaskUpdate, // Bisa update status dari halaman bintang
-          onRefreshData: _loadData, // Bisa refresh data utama
+          onUpdateTask: _handleTaskUpdate,
+          onRefreshData: _loadData,
         ),
       ),
     ).then((_) {
-      // Saat kembali dari halaman bintang, refresh data untuk sinkronisasi
-      _loadData();
+      _loadData(); // Refresh saat kembali
     });
   }
 
-  // --- 4. CALLBACK DARI DRAWER (FILTER BIASA) ---
+  // --- 4. CALLBACK DARI DRAWER (FILTER) ---
   void _onFilterSelected(TaskFilterType type, {int? categoryId}) {
     setState(() {
       _currentFilterType = type;
@@ -168,9 +164,7 @@ class _MainScreenState extends State<MainScreen> {
       _selectedIndex = 0; // Balik ke tab Home
     });
     _filterTasks();
-    
-    // HAPUS Navigator.pop disini karena AppDrawer sudah handle pop
-    // untuk mencegah layar hitam (Double Pop).
+    // Drawer akan tutup sendiri via pop di AppDrawer
   }
 
   // --- 5. UPDATE DATA (Global) ---
@@ -319,12 +313,11 @@ class _MainScreenState extends State<MainScreen> {
 
       // B. CALENDAR SCREEN (Index 1)
       CalendarScreen(
-        tasks: _allTasks, // Data dikirim supaya kalender ada isinya
+        tasks: _allTasks, 
         onTaskUpdate: (_) => _loadData(),
       ),
 
       // C. PROFILE SCREEN (Index 2)
-      // Tanpa parameter, sesuai kode temanmu
       const ProfileScreen(), 
     ];
 
@@ -355,9 +348,34 @@ class _MainScreenState extends State<MainScreen> {
         onAddCategory: _showAddCategoryDialog,
         isKategoriExpanded: _isKategoriExpanded,
         onKategoriToggled: _toggleKategori,
-        
-        // PENTING: Callback untuk buka halaman bintang
         onOpenStarredPage: _navigateToStarredPage, 
+        
+        // --- CALLBACK HAPUS KATEGORI (BARU) ---
+        onDeleteCategory: (category) async {
+          try {
+            // Panggil API Hapus
+            await _apiService.deleteCategory(category.id);
+            
+            // Jika kategori yang dihapus sedang aktif, reset filter
+            if (_selectedCategoryId == category.id) {
+              setState(() {
+                _currentFilterType = TaskFilterType.all;
+                _selectedCategoryId = null;
+                _selectedIndex = 0;
+              });
+            }
+            
+            // Refresh Data
+            _loadData();
+            
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text("Kategori '${category.name}' dihapus")),
+            );
+          } catch (e) {
+            _showError("Gagal menghapus: $e");
+          }
+        },
+        // --------------------------------------
       ),
 
       body: widgetOptions.elementAt(_selectedIndex),

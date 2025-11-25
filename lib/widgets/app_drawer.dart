@@ -1,18 +1,23 @@
 import 'package:flutter/material.dart';
 import '../models/category.dart';
 
+// Enum Filter
 enum TaskFilterType { all, starred, category }
+
+// Callback Filter
 typedef FilterCallback = void Function(TaskFilterType type, {int? categoryId});
 
 class AppDrawer extends StatelessWidget {
   final List<Category> categories;
   final int allTasksCount;
   final int starredTasksCount;
+  
   final FilterCallback onFilterSelected;
   final VoidCallback onAddCategory;
+  final VoidCallback onOpenStarredPage;
   
-  // Callback KHUSUS untuk buka halaman Bintang
-  final VoidCallback onOpenStarredPage; 
+  // --- CALLBACK BARU UNTUK HAPUS ---
+  final Function(Category) onDeleteCategory; 
 
   final bool isKategoriExpanded;
   final Function(bool) onKategoriToggled;
@@ -24,9 +29,11 @@ class AppDrawer extends StatelessWidget {
     required this.starredTasksCount,
     required this.onFilterSelected,
     required this.onAddCategory,
-    required this.onOpenStarredPage, // <--- Tambahkan ini
+    required this.onOpenStarredPage,
     required this.isKategoriExpanded,
     required this.onKategoriToggled,
+    // --- WAJIB DIISI ---
+    required this.onDeleteCategory, 
   }) : super(key: key);
 
   @override
@@ -38,29 +45,30 @@ class AppDrawer extends StatelessWidget {
           const UserAccountsDrawerHeader(
             accountName: Text("To Do Me"),
             accountEmail: Text("Atur semua tugasmu"),
-            decoration: BoxDecoration(color: Colors.purple), // Sesuaikan warna header
+            decoration: BoxDecoration(color: Colors.purple),
           ),
 
-          // --- MENU BINTANGI TUGAS (DIUBAH) ---
+          // MENU BINTANG
           ListTile(
             leading: const Icon(Icons.star, color: Colors.amber),
             title: const Text('Bintangi Tugas'),
             trailing: Text(starredTasksCount.toString()),
             onTap: () {
-              Navigator.pop(context); // Tutup drawer dulu
-              onOpenStarredPage(); // Panggil fungsi navigasi
+              Navigator.pop(context);
+              onOpenStarredPage();
             },
           ),
 
           const Divider(),
 
-          // --- MENU KATEGORI ---
+          // MENU KATEGORI
           ExpansionTile(
             leading: const Icon(Icons.category),
             title: const Text('Kategori'),
             initiallyExpanded: isKategoriExpanded,
             onExpansionChanged: onKategoriToggled,
             children: [
+              // PILIHAN "SEMUA"
               ListTile(
                 contentPadding: const EdgeInsets.only(left: 32.0, right: 16.0),
                 leading: const Icon(Icons.all_inbox_outlined),
@@ -68,18 +76,34 @@ class AppDrawer extends StatelessWidget {
                 trailing: Text(allTasksCount.toString()),
                 onTap: () {
                   onFilterSelected(TaskFilterType.all);
-                  // Navigator.pop(context); // AppDrawer handle pop via MainScreen atau disini, terserah logika sebelumnya.
-                  // Agar aman dan konsisten dengan MainScreen yang sudah diperbaiki sebelumnya:
-                  // Biarkan MainScreen yang menangani state, tapi Drawer harus tutup.
                   Navigator.pop(context);
                 },
               ),
+              
+              // --- LIST KATEGORI (MODIFIKASI DISINI) ---
               ...categories.map((category) {
                 return ListTile(
-                  contentPadding: const EdgeInsets.only(left: 32.0, right: 16.0),
+                  contentPadding: const EdgeInsets.only(left: 32.0, right: 8.0), // Padding kanan dikecilkan
                   leading: const Icon(Icons.label_outline),
                   title: Text(category.name),
-                  trailing: Text(category.tasksCount.toString()),
+                  
+                  // GANTI TRAILING JADI ROW (ANGKA + TOMBOL HAPUS)
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min, // Agar tidak mengambil semua ruang
+                    children: [
+                      Text(category.tasksCount.toString()), // Jumlah tugas
+                      const SizedBox(width: 4),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, size: 20, color: Colors.grey),
+                        tooltip: "Hapus Kategori",
+                        onPressed: () {
+                          // Panggil dialog konfirmasi
+                          _showDeleteConfirmDialog(context, category);
+                        },
+                      ),
+                    ],
+                  ),
+                  
                   onTap: () {
                     onFilterSelected(TaskFilterType.category, categoryId: category.id);
                     Navigator.pop(context);
@@ -87,6 +111,7 @@ class AppDrawer extends StatelessWidget {
                 );
               }).toList(),
 
+              // TOMBOL TAMBAH KATEGORI
               ListTile(
                 contentPadding: const EdgeInsets.only(left: 32.0, right: 16.0),
                 leading: const Icon(Icons.add, color: Colors.green),
@@ -97,6 +122,30 @@ class AppDrawer extends StatelessWidget {
                 },
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Dialog Konfirmasi Hapus (Penting agar tidak kepencet)
+  void _showDeleteConfirmDialog(BuildContext context, Category category) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Hapus Kategori?"),
+        content: Text("Apakah Anda yakin ingin menghapus kategori '${category.name}'? Tugas di dalamnya mungkin ikut terhapus atau kehilangan kategori."),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Batal"),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx); // Tutup dialog
+              onDeleteCategory(category); // Jalankan aksi hapus
+            },
+            child: const Text("Hapus", style: TextStyle(color: Colors.red)),
           ),
         ],
       ),

@@ -44,7 +44,6 @@ Future<void> _register() async {
 
         if (registerSuccess) {
           if (mounted) {
-            // --- UBAH BAGIAN INI ---
             
             // 1. Tampilkan Dialog Sukses & Instruksi Cek Email
             showDialog(

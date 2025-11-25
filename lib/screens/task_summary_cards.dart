@@ -1,15 +1,22 @@
 import 'package:flutter/material.dart';
+import '../models/task.dart';
 
 class TaskSummaryCards extends StatelessWidget {
-  const TaskSummaryCards({super.key});
+  final List<Task> tasks; // Menerima data
+
+  const TaskSummaryCards({super.key, required this.tasks});
 
   @override
   Widget build(BuildContext context) {
+    // Hitung data real
+    final int completed = tasks.where((t) => t.statusSelesai).length;
+    final int pending = tasks.where((t) => !t.statusSelesai).length;
+
     return Row(
       children: [
-        _buildCard("3", "Tugas Selesai", Colors.blue[100]!),
-        SizedBox(width: 12),
-        _buildCard("2", "Tugas Tertunda", Colors.red[100]!),
+        _buildCard(completed.toString(), "Tugas Selesai", Colors.blue[100]!),
+        const SizedBox(width: 12),
+        _buildCard(pending.toString(), "Tugas Tertunda", Colors.red[100]!),
       ],
     );
   }
@@ -26,8 +33,8 @@ class TaskSummaryCards extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(value,
-                style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
-            SizedBox(height: 4),
+                style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
             Text(label),
           ],
         ),

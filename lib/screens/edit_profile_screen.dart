@@ -4,7 +4,17 @@ import 'dart:io';
 import '../services/api_service.dart';
 
 class EditProfileScreen extends StatefulWidget {
-  const EditProfileScreen({Key? key}) : super(key: key);
+  // Parameter untuk menerima data lama
+  final String currentName;
+  final String currentBio;
+  final String currentPhotoUrl;
+
+  const EditProfileScreen({
+    Key? key,
+    this.currentName = "",
+    this.currentBio = "",
+    this.currentPhotoUrl = "",
+  }) : super(key: key);
 
   @override
   State<EditProfileScreen> createState() => _EditProfileScreenState();
@@ -12,44 +22,73 @@ class EditProfileScreen extends StatefulWidget {
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
-
-  bool _loading = true;
-  bool _saving = false;
-
-  String name = "";
-  String bio = "";
-  String photoUrl = "";
   
-  File? newPhoto;
+  late TextEditingController _nameController;
+  late TextEditingController _bioController;
+
+  bool _saving = false;
+  File? _newPhoto; // File foto baru jika user ganti foto
 
   @override
   void initState() {
     super.initState();
-    loadProfile();
+    // ISI FORM DENGAN DATA LAMA (Agar tidak kosong saat dibuka)
+    _nameController = TextEditingController(text: widget.currentName);
+    _bioController = TextEditingController(text: widget.currentBio);
   }
 
-  Future<void> loadProfile() async {
-    final api = ApiService();
-
-    final profile = await api.getProfile();
-
-    setState(() {
-      name = profile["name"] ?? "";
-      bio = profile["bio"] ?? "";
-      photoUrl = profile["photo_url"] ?? "";
-      _loading = false;
-    });
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _bioController.dispose();
+    super.dispose();
   }
 
-  Future<void> pickImage() async {
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.gallery);
+ Future<void> _pickImage(ImageSource source) async {
+    // Tutup dialog pilihan (bottom sheet) dulu
+    Navigator.of(context).pop(); 
+    
+    try {
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(
+        source: source,
+        maxWidth: 600, // Kompres gambar biar upload gak berat
+        imageQuality: 80, 
+      );
 
-    if (picked != null) {
-      setState(() {
-        newPhoto = File(picked.path);
-      });
+      if (picked != null) {
+        setState(() {
+          _newPhoto = File(picked.path);
+        });
+      }
+    } catch (e) {
+      print("Gagal ambil gambar: $e");
     }
+  }
+
+  // 2. FUNGSI MENAMPILKAN PILIHAN (Galeri vs Kamera)
+  void _showPickerOptions() {
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext ctx) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.photo_library, color: Colors.purple),
+                title: const Text('Ambil dari Galeri'),
+                onTap: () => _pickImage(ImageSource.gallery),
+              ),
+              ListTile(
+                leading: const Icon(Icons.camera_alt, color: Colors.purple),
+                title: const Text('Ambil dari Kamera'),
+                onTap: () => _pickImage(ImageSource.camera),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   Future<void> saveProfile() async {
@@ -60,33 +99,38 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final api = ApiService();
     try {
       await api.updateProfile(
-        name: name,
-        bio: bio,
-        photo: newPhoto,
+        name: _nameController.text,
+        bio: _bioController.text,
+        photo: _newPhoto, // Kirim foto jika ada
       );
 
       if (!mounted) return;
+      
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Profil berhasil diperbarui")),
       );
 
-      Navigator.pop(context, true); // kembali ke ProfileScreen
+      // Kembali ke halaman profil dengan sinyal sukses
+      Navigator.pop(context, true);
+      
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Gagal menyimpan: $e")),
+        SnackBar(content: Text("Gagal menyimpan: $e"), backgroundColor: Colors.red),
       );
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
-
-    setState(() => _saving = false);
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+    // Logika Menampilkan Gambar (Foto Baru vs Url Lama vs Icon Default)
+    ImageProvider? imageProvider;
+    if (_newPhoto != null) {
+      imageProvider = FileImage(_newPhoto!);
+    } else if (widget.currentPhotoUrl.isNotEmpty) {
+      imageProvider = NetworkImage(widget.currentPhotoUrl);
     }
 
     return Scaffold(
@@ -97,29 +141,27 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           key: _formKey,
           child: ListView(
             children: [
+              // --- FOTO PROFIL ---
               Center(
                 child: Stack(
                   children: [
                     CircleAvatar(
                       radius: 50,
-                      backgroundImage: newPhoto != null
-                          ? FileImage(newPhoto!)
-                          : (photoUrl.isNotEmpty
-                              ? NetworkImage(photoUrl)
-                              : null) as ImageProvider?,
-                      child: (photoUrl.isEmpty && newPhoto == null)
-                          ? const Icon(Icons.person, size: 50)
+                      backgroundColor: Colors.grey[200],
+                      backgroundImage: imageProvider,
+                      child: (imageProvider == null)
+                          ? const Icon(Icons.person, size: 50, color: Colors.grey)
                           : null,
                     ),
                     Positioned(
                       bottom: 0,
                       right: 0,
                       child: InkWell(
-                        onTap: pickImage,
+                        onTap: _showPickerOptions,
                         child: CircleAvatar(
                           radius: 18,
                           backgroundColor: Colors.blue,
-                          child: const Icon(Icons.edit, color: Colors.white),
+                          child: const Icon(Icons.camera_alt, size: 18, color: Colors.white),
                         ),
                       ),
                     )
@@ -127,42 +169,47 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ),
               ),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
 
-              // Input Nama
+              // --- INPUT NAMA ---
               TextFormField(
-                initialValue: name,
+                controller: _nameController,
                 decoration: const InputDecoration(
-                  labelText: "Nama",
+                  labelText: "Nama Lengkap",
                   border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.person_outline),
                 ),
                 validator: (value) =>
                     value!.isEmpty ? "Nama tidak boleh kosong" : null,
-                onChanged: (v) => name = v,
               ),
 
               const SizedBox(height: 16),
 
-              // Input Bio
+              // --- INPUT BIO ---
               TextFormField(
-                initialValue: bio,
+                controller: _bioController,
                 maxLines: 3,
                 decoration: const InputDecoration(
-                  labelText: "Bio",
+                  labelText: "Bio Singkat",
                   border: OutlineInputBorder(),
+                  alignLabelWithHint: true,
+                  prefixIcon: Icon(Icons.info_outline),
                 ),
-                onChanged: (v) => bio = v,
               ),
 
-              const SizedBox(height: 30),
+              const SizedBox(height: 32),
 
-              // Tombol simpan
+              // --- TOMBOL SIMPAN ---
               SizedBox(
                 width: double.infinity,
+                height: 50,
                 child: ElevatedButton(
                   onPressed: _saving ? null : saveProfile,
                   child: _saving
-                      ? const CircularProgressIndicator(color: Colors.white)
+                      ? const SizedBox(
+                          height: 24, width: 24,
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+                        )
                       : const Text("Simpan Perubahan"),
                 ),
               )
