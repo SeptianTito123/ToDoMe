@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
 import '../models/task.dart';
+import '../services/api_service.dart';
 import '../screens/task_detail_screen.dart';
 
 class CalendarScreen extends StatefulWidget {
   final List<Task> tasks;
-  final Function(Task)? onTaskUpdate; // Callback jika user mengedit task dari sini
+  final Function(Task)? onTaskUpdate; 
 
   const CalendarScreen({
     Key? key, 
@@ -23,25 +24,23 @@ class _CalendarScreenState extends State<CalendarScreen> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   List<Task> _selectedTasks = [];
+  
+  final ApiService _apiService = ApiService();
 
   @override
   void initState() {
     super.initState();
     _selectedDay = _focusedDay;
-    // Load tugas hari ini saat pertama buka
     _selectedTasks = _getTasksForDay(_focusedDay);
   }
 
-  // --- LOGIKA FILTER TUGAS ---
   List<Task> _getTasksForDay(DateTime day) {
-    // Filter tugas yang deadline-nya sama dengan hari yang dipilih
     return widget.tasks.where((task) {
       if (task.deadline == null) return false;
       return isSameDay(task.deadline, day);
     }).toList();
   }
 
-  // Update list saat parent mengirim data baru (misal setelah refresh)
   @override
   void didUpdateWidget(covariant CalendarScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -50,15 +49,41 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
   }
 
+  // --- FUNGSI UPDATE TUGAS (Checklist & Bintang) ---
+  Future<void> _updateTaskLocally(Task task, Map<String, dynamic> data) async {
+    try {
+      // 1. Panggil API untuk update di server
+      final updatedTask = await _apiService.updateTask(task.id, data);
+
+      // 2. Update UI Lokal (List di Kalender) agar langsung berubah
+      setState(() {
+        final index = _selectedTasks.indexWhere((t) => t.id == task.id);
+        if (index != -1) {
+          _selectedTasks[index] = updatedTask;
+        }
+      });
+
+      // 3. Kabari Parent (MainScreen) agar list utama di Home juga terupdate
+      if (widget.onTaskUpdate != null) {
+        widget.onTaskUpdate!(updatedTask);
+      }
+
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal update: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Kalender Tugas', style: TextStyle(color: Colors.black87)),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        centerTitle: false,
-      ),
+      // AppBar dihapus atau disesuaikan jika ingin header custom
+      // (Di MainScreen sudah ada AppBar global, tapi CalendarScreen ini sering pakai body saja)
+      // Namun jika Anda ingin AppBar spesifik di dalam Calendar:
+      // appBar: AppBar(...) 
+      // Kita gunakan Column langsung karena MainScreen sudah punya Scaffold & AppBar
+      
       body: Column(
         children: [
           // --- 1. WIDGET KALENDER ---
@@ -80,32 +105,25 @@ class _CalendarScreenState extends State<CalendarScreen> {
               lastDay: DateTime.utc(2030, 12, 31),
               focusedDay: _focusedDay,
               calendarFormat: _calendarFormat,
-              
-              // Style Kalender agar mirip tema aplikasimu (Ungu/Putih)
               headerStyle: const HeaderStyle(
                 formatButtonVisible: false,
                 titleCentered: true,
                 titleTextStyle: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
               ),
               calendarStyle: CalendarStyle(
-                // Warna hari ini
                 todayDecoration: BoxDecoration(
                   color: Colors.purple.withOpacity(0.5), 
                   shape: BoxShape.circle,
                 ),
-                // Warna hari yang dipilih
                 selectedDecoration: const BoxDecoration(
-                  color: Colors.purple, // Sesuaikan dengan warna primer aplikasimu
+                  color: Colors.purple, 
                   shape: BoxShape.circle,
                 ),
-                // Warna penanda tugas (titik kecil)
                 markerDecoration: const BoxDecoration(
                   color: Colors.orange,
                   shape: BoxShape.circle,
                 ),
               ),
-
-              // Logika Seleksi
               selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
               onDaySelected: (selectedDay, focusedDay) {
                 if (!isSameDay(_selectedDay, selectedDay)) {
@@ -119,8 +137,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
               onPageChanged: (focusedDay) {
                 _focusedDay = focusedDay;
               },
-
-              // Logika Marker (Titik di bawah tanggal)
               eventLoader: _getTasksForDay,
             ),
           ),
@@ -167,7 +183,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  // Widget Tampilan Kosong
   Widget _buildEmptyState() {
     return Center(
       child: Column(
@@ -184,19 +199,21 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  // Widget Item Tugas (Mirip dengan Home)
   Widget _buildTaskItem(Task task) {
     return Card(
       elevation: 0,
-      color: Colors.blue[50], // Sesuaikan warna background card
+      color: Colors.blue[50],
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
+        // CHECKBOX: Panggil _updateTaskLocally saat diklik
         leading: Checkbox(
           value: task.statusSelesai,
           activeColor: Colors.purple,
           onChanged: (val) {
-             // Opsional: Handle update status langsung disini jika diinginkan
+            if (val != null) {
+              _updateTaskLocally(task, {'status_selesai': val});
+            }
           },
         ),
         title: Text(
@@ -207,23 +224,38 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
         ),
         subtitle: Text(
-          DateFormat('HH:mm').format(task.deadline!),
+          task.deadline != null 
+            ? DateFormat('HH:mm').format(task.deadline!)
+            : '-',
           style: TextStyle(color: Colors.grey[600]),
         ),
-        trailing: Icon(
-          task.isStarred ? Icons.star : Icons.star_border,
-          color: task.isStarred ? Colors.amber : Colors.grey,
+        // ICON BINTANG: Panggil _updateTaskLocally saat diklik
+        trailing: GestureDetector(
+          onTap: () {
+            _updateTaskLocally(task, {'is_starred': !task.isStarred});
+          },
+          child: Icon(
+            task.isStarred ? Icons.star : Icons.star_border,
+            color: task.isStarred ? Colors.amber : Colors.grey,
+          ),
         ),
         onTap: () async {
-          // Buka Detail
-          await Navigator.push(
+          final result = await Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => TaskDetailScreen(task: task)),
           );
-          // Refresh list jika ada perubahan (perlu callback ke parent idealnya)
-          setState(() {
-            _selectedTasks = _getTasksForDay(_selectedDay!);
-          });
+          
+          // Jika user mengedit di halaman detail, refresh list
+          if (result == true) {
+             setState(() {
+               _selectedTasks = _getTasksForDay(_selectedDay!);
+             });
+             // Trigger parent refresh juga
+             if (widget.onTaskUpdate != null) {
+                // Kita panggil dengan task yang ada (atau dummy), tujuannya agar parent reloadAll
+                widget.onTaskUpdate!(task);
+             }
+          }
         },
       ),
     );

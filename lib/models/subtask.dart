@@ -15,11 +15,13 @@ class Subtask {
     });
 
     factory Subtask.fromJson(Map<String, dynamic> json) => Subtask(
-        id: json["id"],
-        taskId: json["task_id"],
+        id: int.parse(json["id"].toString()),
+        taskId: int.parse(json["task_id"].toString()),
         title: json["title"],
-        isCompleted: json["is_completed"] == 1 || json["is_completed"] == true,
+        isCompleted: json["is_completed"].toString() == "1"
+            || json["is_completed"] == true,
     );
+
 
     Map<String, dynamic> toJson() => {
         "id": id,

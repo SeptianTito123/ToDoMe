@@ -36,21 +36,27 @@ class Task {
     });
 
     factory Task.fromJson(Map<String, dynamic> json) => Task(
-        id: json["id"],
-        userId: json["user_id"],
+        id: int.parse(json["id"].toString()),
+        userId: int.parse(json["user_id"].toString()),
         judul: json["judul"],
         deskripsi: json["deskripsi"],
-        statusSelesai: json["status_selesai"] == 1 || json["status_selesai"] == true,
-        isStarred: json["is_starred"] == 1 || json["is_starred"] == true,
-        deadline: json["deadline"] == null ? null : DateTime.parse(json["deadline"]),
+        statusSelesai: json["status_selesai"].toString() == "1"
+            || json["status_selesai"] == true,
+        isStarred: json["is_starred"].toString() == "1"
+            || json["is_starred"] == true,
+        deadline: json["deadline"] == null
+            ? null
+            : DateTime.parse(json["deadline"]),
         createdAt: DateTime.parse(json["created_at"]),
         updatedAt: DateTime.parse(json["updated_at"]),
         categories: json["categories"] == null
             ? []
-            : List<Category>.from(json["categories"]!.map((x) => Category.fromJson(x))),
+            : List<Category>.from(
+                  json["categories"].map((x) => Category.fromJson(x))),
         subtasks: json["subtasks"] == null
-          ? []
-          : List<Subtask>.from(json["subtasks"]!.map((x) => Subtask.fromJson(x))),
+            ? []
+            : List<Subtask>.from(
+                  json["subtasks"].map((x) => Subtask.fromJson(x))),
     );
 
     Map<String, dynamic> toJson() => {
@@ -72,4 +78,3 @@ class Task {
     };
 }
 
-// <-- 2. KELAS KATEGORI YANG LAMA DIHAPUS DARI SINI

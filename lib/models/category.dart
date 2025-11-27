@@ -23,13 +23,16 @@ class Category {
     });
 
     factory Category.fromJson(Map<String, dynamic> json) => Category(
-        id: json["id"],
+        id: int.parse(json["id"].toString()),
         name: json["name"],
-        userId: json["user_id"],
-        tasksCount: json["tasks_count"] ?? 0,
+        userId: int.parse(json["user_id"].toString()),
+        tasksCount: json["tasks_count"] == null
+            ? 0
+            : int.parse(json["tasks_count"].toString()),
         createdAt: DateTime.parse(json["created_at"]),
         updatedAt: DateTime.parse(json["updated_at"]),
     );
+
 
     Map<String, dynamic> toJson() => {
         "id": id,

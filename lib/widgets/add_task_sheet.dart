@@ -4,9 +4,10 @@ import '../models/category.dart';
 
 class AddTaskSheet extends StatefulWidget {
   final List<Category> categories;
-  // Callback onSave sekarang menerima subtasks juga
   final Function(String judul, String deskripsi, DateTime? deadline, List<int> catIds, List<String> subtasks) onSave;
-  final Function(String) onCreateCategory;
+  
+  // PERBAIKAN: Callback kini mengembalikan Future<Category?> agar kita bisa dapat data barunya
+  final Future<Category?> Function(String) onCreateCategory;
 
   const AddTaskSheet({
     Key? key, 
@@ -26,27 +27,33 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
   
   DateTime? _selectedDate;
   List<int> _selectedCategoryIds = [];
-  List<String> _subtasks = []; // Menyimpan list subtask sementara
+  List<String> _subtasks = [];
+  
+  // PERBAIKAN: List lokal untuk menampung kategori agar bisa update real-time di sheet
+  List<Category> _localCategories = [];
+
+  @override
+  void initState() {
+    super.initState();
+    // Salin data dari parent ke list lokal saat pertama dibuka
+    _localCategories = List.from(widget.categories);
+  }
 
   // --- LOGIKA TANGGAL & WAKTU ---
   void _setDate(int daysToAdd) {
     final now = DateTime.now();
     setState(() {
       if (daysToAdd == 0) {
-        // HARI INI: Set ke jam 23:59:59 (Akhir Hari)
         _selectedDate = DateTime(now.year, now.month, now.day, 23, 59, 59);
       } else if (daysToAdd == 1) {
-        // BESOK: Set ke jam 23:59:59 juga (Biasanya deadline itu akhir hari)
         final tmr = now.add(const Duration(days: 1));
         _selectedDate = DateTime(tmr.year, tmr.month, tmr.day, 23, 59, 59);
       }
     });
   }
 
-  // Pilih Tanggal & Jam Custom (Mirip add_task_screen)
   Future<void> _pickCustomDate() async {
     final now = DateTime.now();
-    // 1. Pilih Tanggal
     final pickedDate = await showDatePicker(
       context: context, 
       initialDate: _selectedDate ?? now, 
@@ -55,7 +62,6 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
     );
     
     if (pickedDate != null) {
-      // 2. Pilih Jam (Langsung muncul setelah pilih tanggal agar praktis)
       if (!mounted) return;
       final pickedTime = await showTimePicker(
         context: context,
@@ -89,7 +95,7 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
     });
   }
 
-  // --- LOGIKA KATEGORI ---
+  // --- LOGIKA KATEGORI (FIXED) ---
   void _showAddCategoryDialog() {
     final catController = TextEditingController();
     showDialog(
@@ -99,12 +105,25 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
         content: TextField(controller: catController, decoration: const InputDecoration(hintText: "Nama Kategori")),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Batal")),
-          ElevatedButton(onPressed: () {
-            if (catController.text.isNotEmpty) {
-              widget.onCreateCategory(catController.text);
-              Navigator.pop(ctx);
-            }
-          }, child: const Text("Simpan"))
+          ElevatedButton(
+            onPressed: () async {
+              if (catController.text.isNotEmpty) {
+                // 1. Panggil fungsi create di parent dan TUNGGU hasilnya
+                final newCategory = await widget.onCreateCategory(catController.text);
+                
+                // 2. Jika berhasil, update list lokal di sini
+                if (newCategory != null) {
+                  setState(() {
+                    _localCategories.add(newCategory); // Tambah ke tampilan
+                    _selectedCategoryIds.add(newCategory.id); // Otomatis pilih
+                  });
+                }
+                
+                Navigator.pop(ctx);
+              }
+            }, 
+            child: const Text("Simpan")
+          )
         ],
       ),
     );
@@ -112,23 +131,20 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
 
   @override
   Widget build(BuildContext context) {
-    // Menggunakan DraggableScrollableSheet atau SingleChildScrollView agar bisa scroll
     return Padding(
       padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom, // Menghindari Keyboard
+        bottom: MediaQuery.of(context).viewInsets.bottom,
         left: 16, right: 16, top: 12
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-           // Handle Bar (Garis kecil di atas)
           Container(
             width: 40, height: 4,
             margin: const EdgeInsets.only(bottom: 16),
             decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
           ),
 
-          // AREA SCROLLABLE (Agar muat banyak konten)
           Flexible(
             child: SingleChildScrollView(
               child: Column(
@@ -160,7 +176,7 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                   ),
                   const Divider(),
 
-                  // 3. SUBTASKS (Baru ditambahkan)
+                  // 3. SUBTASKS
                   if (_subtasks.isNotEmpty) ...[
                     const Text('Sub-tugas:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
                     ListView.builder(
@@ -179,7 +195,6 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                       ),
                     ),
                   ],
-                  // Input Subtask Baru
                   Row(
                     children: [
                       Expanded(
@@ -191,7 +206,7 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                             icon: Icon(Icons.checklist, size: 20, color: Colors.grey),
                           ),
                           style: const TextStyle(fontSize: 14),
-                          onSubmitted: (_) => _addSubtask(), // Tekan enter untuk tambah
+                          onSubmitted: (_) => _addSubtask(),
                         ),
                       ),
                       IconButton(
@@ -202,7 +217,7 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                   ),
                   const Divider(),
 
-                  // 4. KATEGORI
+                  // 4. KATEGORI (MENGGUNAKAN _localCategories)
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
@@ -211,7 +226,8 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                           icon: const Icon(Icons.add_circle_outline, color: Colors.blue), 
                           onPressed: _showAddCategoryDialog,
                         ),
-                        ...widget.categories.map((cat) {
+                        // PERBAIKAN: Loop dari _localCategories, bukan widget.categories
+                        ..._localCategories.map((cat) {
                           final isSelected = _selectedCategoryIds.contains(cat.id);
                           return Padding(
                             padding: const EdgeInsets.only(right: 8.0),
@@ -232,7 +248,7 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                   ),
                   const SizedBox(height: 10),
 
-                  // 5. TANGGAL & WAKTU (Shortcut + Custom)
+                  // 5. TANGGAL & WAKTU
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
@@ -261,7 +277,7 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
             ),
           ),
 
-          // 6. TOMBOL SIMPAN (Sticky di bawah)
+          // 6. TOMBOL SIMPAN
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
@@ -278,7 +294,7 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                     _descController.text, 
                     _selectedDate, 
                     _selectedCategoryIds,
-                    _subtasks, // <-- Kirim subtasks ke parent
+                    _subtasks,
                   );
                   Navigator.pop(context);
                 }

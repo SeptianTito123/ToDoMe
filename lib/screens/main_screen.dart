@@ -23,26 +23,21 @@ class _MainScreenState extends State<MainScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final TextEditingController _categoryController = TextEditingController();
 
-  // --- State Management Utama ---
   int _selectedIndex = 0;
   bool _isLoading = true;
   String _errorMessage = '';
 
-  // Data Utama
   List<Task> _allTasks = [];
   List<Category> _allCategories = [];
   
-  // Data Terfilter untuk Home
   List<Task> _ongoingTasks = [];
   List<Task> _overdueTasks = [];
   List<Task> _completedTasks = [];
 
-  // Filter Logic
   TaskFilterType _currentFilterType = TaskFilterType.all;
   int? _selectedCategoryId;
   String _appBarTitle = 'Semua Tugas';
 
-  // --- State Accordion (Buka/Tutup List di Home) ---
   bool _isKategoriExpanded = true;
   bool _isOngoingExpanded = true;
   bool _isOverdueExpanded = true;
@@ -54,7 +49,6 @@ class _MainScreenState extends State<MainScreen> {
     _loadData();
   }
 
-  // --- 1. MEMUAT DATA ---
   Future<void> _loadData() async {
     if (!mounted) return;
     setState(() {
@@ -73,7 +67,7 @@ class _MainScreenState extends State<MainScreen> {
           _allTasks = results[0] as List<Task>;
           _allCategories = results[1] as List<Category>;
         });
-        _filterTasks(); // Jalankan filter ulang
+        _filterTasks();
       }
 
     } catch (e) {
@@ -83,21 +77,18 @@ class _MainScreenState extends State<MainScreen> {
     }
   }
 
-  // --- 2. LOGIKA FILTER (HOME SCREEN) ---
   void _filterTasks() {
     if (!mounted) return;
 
     List<Task> tempTasks;
 
     setState(() {
-      // Filter Awal (Kategori atau Semua)
       switch (_currentFilterType) {
         case TaskFilterType.category:
           tempTasks = _allTasks.where((task) {
             return task.categories?.any((cat) => cat.id == _selectedCategoryId) ?? false;
           }).toList();
           
-          // Ubah judul AppBar sesuai nama Kategori
           if (_selectedCategoryId != null && _allCategories.isNotEmpty) {
              try {
                final cat = _allCategories.firstWhere((c) => c.id == _selectedCategoryId);
@@ -108,7 +99,6 @@ class _MainScreenState extends State<MainScreen> {
           }
           break;
         case TaskFilterType.starred:
-          // Fallback jika masih terpilih starred
           tempTasks = _allTasks.where((t) => t.isStarred).toList();
           _appBarTitle = 'Bintangi Tugas';
           break;
@@ -118,7 +108,6 @@ class _MainScreenState extends State<MainScreen> {
           _appBarTitle = 'Semua Tugas';
       }
 
-      // Bagi menjadi 3 Grup Status
       final now = DateTime.now();
       List<Task> ongoing = [];
       List<Task> overdue = [];
@@ -140,7 +129,6 @@ class _MainScreenState extends State<MainScreen> {
     });
   }
 
-  // --- 3. NAVIGASI KHUSUS HALAMAN BINTANG ---
   void _navigateToStarredPage() {
     Navigator.push(
       context,
@@ -152,22 +140,19 @@ class _MainScreenState extends State<MainScreen> {
         ),
       ),
     ).then((_) {
-      _loadData(); // Refresh saat kembali
+      _loadData();
     });
   }
 
-  // --- 4. CALLBACK DARI DRAWER (FILTER) ---
   void _onFilterSelected(TaskFilterType type, {int? categoryId}) {
     setState(() {
       _currentFilterType = type;
       _selectedCategoryId = categoryId;
-      _selectedIndex = 0; // Balik ke tab Home
+      _selectedIndex = 0;
     });
     _filterTasks();
-    // Drawer akan tutup sendiri via pop di AppDrawer
   }
 
-  // --- 5. UPDATE DATA (Global) ---
   Future<void> _handleTaskUpdate(Task task, Map<String, dynamic> data) async {
     try {
       final updatedTask = await _apiService.updateTask(task.id, data);
@@ -183,7 +168,7 @@ class _MainScreenState extends State<MainScreen> {
     }
   }
 
-  // --- 6. POP-UP TAMBAH TUGAS (ADD TASK SHEET) ---
+  // --- POP-UP TAMBAH TUGAS (ADD TASK SHEET) ---
   void _showAddTaskSheet() {
     showModalBottomSheet(
       context: context,
@@ -197,27 +182,34 @@ class _MainScreenState extends State<MainScreen> {
         ),
         child: AddTaskSheet(
           categories: _allCategories,
+          // PERBAIKAN: onCreateCategory sekarang return Category object
           onCreateCategory: (name) async {
              try {
-                await _apiService.createCategory(name);
-                final newCats = await _apiService.getCategories();
-                setState(() => _allCategories = newCats);
+               final newCat = await _apiService.createCategory(name);
+               
+               // Update list global di MainScreen juga
+               final newCats = await _apiService.getCategories();
+               setState(() => _allCategories = newCats);
+               
+               // Kembalikan kategori baru ke Sheet agar bisa ditampilkan
+               return newCat;
              } catch (e) {
-                _showError(e.toString());
+               _showError(e.toString());
+               return null;
              }
           },
           onSave: (judul, deskripsi, deadline, catIds, subtasks) async {
              try {
-                await _apiService.createTask(
-                  judul: judul, 
-                  deskripsi: deskripsi, 
-                  deadline: deadline, 
-                  categoryIds: catIds,
-                  subtasks: subtasks 
-                );
-                _loadData(); 
+               await _apiService.createTask(
+                 judul: judul, 
+                 deskripsi: deskripsi, 
+                 deadline: deadline, 
+                 categoryIds: catIds,
+                 subtasks: subtasks 
+               );
+               _loadData(); 
              } catch (e) {
-                _showError(e.toString());
+               _showError(e.toString());
              }
           },
         ),
@@ -225,7 +217,6 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  // Dialog Tambah Kategori (Drawer)
   void _showAddCategoryDialog() {
     _categoryController.clear();
     showDialog(
@@ -268,26 +259,21 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  // Navigasi Bottom Bar
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
   }
 
-  // Toggle State Accordion
   void _toggleKategori(bool isExpanded) => setState(() { _isKategoriExpanded = isExpanded; });
   void _toggleOngoing(bool isExpanded) => setState(() { _isOngoingExpanded = isExpanded; });
   void _toggleOverdue(bool isExpanded) => setState(() { _isOverdueExpanded = isExpanded; });
   void _toggleCompleted(bool isExpanded) => setState(() { _isCompletedExpanded = isExpanded; });
 
-  // --- 7. BUILD UTAMA ---
   @override
   Widget build(BuildContext context) {
     
     final List<Widget> widgetOptions = <Widget>[
-      
-      // A. HOME SCREEN (Index 0)
       _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage.isNotEmpty
@@ -302,7 +288,6 @@ class _MainScreenState extends State<MainScreen> {
                   selectedCategoryId: _selectedCategoryId,
                   onFilterSelected: _onFilterSelected,
                   onUpdateTask: _handleTaskUpdate,
-                  // State Accordion
                   isOngoingExpanded: _isOngoingExpanded,
                   isOverdueExpanded: _isOverdueExpanded,
                   isCompletedExpanded: _isCompletedExpanded,
@@ -311,13 +296,11 @@ class _MainScreenState extends State<MainScreen> {
                   onCompletedToggled: _toggleCompleted,
                 ),
 
-      // B. CALENDAR SCREEN (Index 1)
       CalendarScreen(
         tasks: _allTasks, 
         onTaskUpdate: (_) => _loadData(),
       ),
 
-      // C. PROFILE SCREEN (Index 2)
       const ProfileScreen(), 
     ];
 
@@ -334,7 +317,6 @@ class _MainScreenState extends State<MainScreen> {
           onPressed: () => _scaffoldKey.currentState?.openDrawer(),
         ),
         actions: [
-          // Refresh button hanya di Home
           if (_selectedIndex == 0)
             IconButton(icon: const Icon(Icons.refresh), onPressed: _loadData)
         ],
@@ -350,13 +332,9 @@ class _MainScreenState extends State<MainScreen> {
         onKategoriToggled: _toggleKategori,
         onOpenStarredPage: _navigateToStarredPage, 
         
-        // --- CALLBACK HAPUS KATEGORI (BARU) ---
         onDeleteCategory: (category) async {
           try {
-            // Panggil API Hapus
             await _apiService.deleteCategory(category.id);
-            
-            // Jika kategori yang dihapus sedang aktif, reset filter
             if (_selectedCategoryId == category.id) {
               setState(() {
                 _currentFilterType = TaskFilterType.all;
@@ -364,10 +342,7 @@ class _MainScreenState extends State<MainScreen> {
                 _selectedIndex = 0;
               });
             }
-            
-            // Refresh Data
             _loadData();
-            
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text("Kategori '${category.name}' dihapus")),
             );
@@ -375,17 +350,18 @@ class _MainScreenState extends State<MainScreen> {
             _showError("Gagal menghapus: $e");
           }
         },
-        // --------------------------------------
       ),
 
       body: widgetOptions.elementAt(_selectedIndex),
 
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showAddTaskSheet,
-        tooltip: 'Tambah Tugas',
-        backgroundColor: Colors.purple[100], 
-        child: const Icon(Icons.add, color: Colors.purple),
-      ),
+      floatingActionButton: _selectedIndex == 0 
+          ? FloatingActionButton(
+              onPressed: _showAddTaskSheet,
+              tooltip: 'Tambah Tugas',
+              backgroundColor: Colors.purple[100], 
+              child: const Icon(Icons.add, color: Colors.purple),
+            )
+          : null,
 
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
