@@ -1,7 +1,7 @@
 plugins {
     id("com.android.application")
     id("kotlin-android")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
+    id("com.google.gms.google-services")
     id("dev.flutter.flutter-gradle-plugin")
 }
 
@@ -11,6 +11,9 @@ android {
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
+        // 1. AKTIFKAN DESUGARING (Sintaks Kotlin DSL)
+        isCoreLibraryDesugaringEnabled = true
+        
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
@@ -28,6 +31,9 @@ android {
         targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        
+        // Opsional: MultiDex sering dibutuhkan jika app semakin besar
+        multiDexEnabled = true 
     }
 
     buildTypes {
@@ -41,4 +47,9 @@ android {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // Library Desugaring agar fitur notifikasi jalan di Android lama
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
 }
