@@ -42,11 +42,60 @@ class AppDrawer extends StatelessWidget {
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
-          const UserAccountsDrawerHeader(
-            accountName: Text("To Do Me"),
-            accountEmail: Text("Atur semua tugasmu"),
-            decoration: BoxDecoration(color: Colors.purple),
+          DrawerHeader(
+            padding: EdgeInsets.zero,
+            child: Stack(
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Color(0xFF9C27B0),
+                        Color(0xFF6A1B9A),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                ),
+                Positioned(
+                  right: -10,
+                  top: 10,
+                  child: Icon(
+                    Icons.check_circle_rounded,
+                    size: 110,
+                    color: Colors.white.withOpacity(0.15),
+                  ),
+                ),
+                Positioned(
+                  left: 20,
+                  bottom: 28,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      Text(
+                        "To Do Me",
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        "Atur semua tugasmu",
+                        style: TextStyle(
+                          fontSize: 15,
+                          color: Colors.white70,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
+
 
           // MENU BINTANG
           ListTile(
