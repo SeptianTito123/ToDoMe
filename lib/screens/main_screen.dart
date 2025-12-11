@@ -541,42 +541,89 @@ class _MainScreenState extends State<MainScreen> {
                 )
               : null,
 
-          bottomNavigationBar: NavigationBar(
-            selectedIndex: _selectedIndex,
-            onDestinationSelected: _onItemTapped,
-            destinations: [
-              const NavigationDestination(
-                icon: Icon(Icons.list_alt_outlined),
-                selectedIcon: Icon(Icons.list_alt),
-                label: 'Tugas',
-              ),
-              NavigationDestination(
-                icon: Showcase(
-                  key: _calendarTabKey,
-                  title: 'Kalender',
-                  description: 'Lihat deadline tugasmu dalam tampilan kalender.',
-                  tooltipBackgroundColor: Colors.purple,
-                  textColor: Colors.white,
-                  targetShapeBorder: const CircleBorder(),
-                  child: const Icon(Icons.calendar_month_outlined),
+          bottomNavigationBar: Container(
+            decoration: BoxDecoration(
+              color: Colors.purple.shade100,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 20,
+                  offset: const Offset(0, -5), 
                 ),
-                selectedIcon: const Icon(Icons.calendar_month),
-                label: 'Kalender',
+              ],
+            ),
+            
+            // 2. TEMA NAVIGASI (Mengatur warna ikon & teks secara global di sini)
+            child: NavigationBarTheme(
+              data: NavigationBarThemeData(
+                indicatorColor: Colors.purple.shade100,
+                
+                // Warna Ikon: Ungu jika dipilih, Abu-abu jika tidak
+                iconTheme: MaterialStateProperty.resolveWith((states) {
+                  if (states.contains(MaterialState.selected)) {
+                    return const IconThemeData(color: Colors.purple, size: 26);
+                  }
+                  return const IconThemeData(color: Colors.grey, size: 24);
+                }),
+                
+                // Gaya Teks Label
+                labelTextStyle: MaterialStateProperty.resolveWith((states) {
+                  if (states.contains(MaterialState.selected)) {
+                    return const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.purple);
+                  }
+                  return const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.grey);
+                }),
               ),
-              NavigationDestination(
-                icon: Showcase(
-                  key: _profileTabKey,
-                  title: 'Profil',
-                  description: 'Atur akun, ganti password, dan lihat statistikmu.',
-                  tooltipBackgroundColor: Colors.purple,
-                  textColor: Colors.white,
-                  targetShapeBorder: const CircleBorder(),
-                  child: const Icon(Icons.person_outline),
+              
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)), 
+                child: NavigationBar(
+                  height: 75,
+                  elevation: 0,
+                  backgroundColor: Colors.white,
+                  
+                  selectedIndex: _selectedIndex,
+                  onDestinationSelected: _onItemTapped,
+                  
+                  labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
+
+                  destinations: [
+                    const NavigationDestination(
+                      icon: Icon(Icons.list_alt_outlined),
+                      selectedIcon: Icon(Icons.list_alt),
+                      label: 'Tugas',
+                    ),
+                    NavigationDestination(
+                      icon: Showcase(
+                        key: _calendarTabKey,
+                        title: 'Kalender',
+                        description: 'Lihat deadline tugasmu dalam tampilan kalender.',
+                        tooltipBackgroundColor: Colors.purple,
+                        textColor: Colors.white,
+                        targetShapeBorder: const CircleBorder(),
+                        child: const Icon(Icons.calendar_month_outlined),
+                      ),
+                      selectedIcon: const Icon(Icons.calendar_month),
+                      label: 'Kalender',
+                    ),
+                    NavigationDestination(
+                      icon: Showcase(
+                        key: _profileTabKey,
+                        title: 'Profil',
+                        description: 'Atur akun, ganti password, dan lihat statistikmu.',
+                        tooltipBackgroundColor: Colors.purple,
+                        textColor: Colors.white,
+                        targetShapeBorder: const CircleBorder(),
+                        child: const Icon(Icons.person_outline),
+                      ),
+                      selectedIcon: const Icon(Icons.person),
+                      label: 'Profil',
+                    ),
+                  ],
                 ),
-                selectedIcon: const Icon(Icons.person),
-                label: 'Profil',
               ),
-            ],
+            ),
           ),
         );
       },

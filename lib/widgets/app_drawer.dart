@@ -165,8 +165,8 @@ class AppDrawer extends StatelessWidget {
               // TOMBOL TAMBAH KATEGORI
               ListTile(
                 contentPadding: const EdgeInsets.only(left: 32.0, right: 16.0),
-                leading: const Icon(Icons.add, color: Colors.green),
-                title: const Text('Tambah Kategori', style: TextStyle(color: Colors.green)),
+                leading: const Icon(Icons.add, color: Colors.purple),
+                title: const Text('Tambah Kategori', style: TextStyle(color: Colors.purple)),
                 onTap: () {
                   Navigator.pop(context);
                   onAddCategory();

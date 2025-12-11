@@ -52,7 +52,7 @@ class TaskTile extends StatelessWidget {
             scale: 1.2,
             child: Checkbox(
               value: task.statusSelesai,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+              shape: CircleBorder(),
               activeColor: Colors.purple,
               onChanged: onStatusChanged,
             ),

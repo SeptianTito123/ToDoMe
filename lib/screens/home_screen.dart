@@ -133,10 +133,38 @@ class HomeScreen extends StatelessWidget {
           physics: const AlwaysScrollableScrollPhysics(),
           child: ConstrainedBox(
             constraints: BoxConstraints(minHeight: constraints.maxHeight),
-            child: const Center(
-              child: Text('Tidak ada tugas di daftar ini.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 18, color: Colors.grey),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // --- ILUSTRASI KOSONG ---
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.purple.withOpacity(0.1), // Lingkaran transparan
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.task_alt_rounded, // Ikon Centang Besar
+                      size: 80,
+                      color: Colors.purple,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  const Text(
+                    'Tidak ada tugas! 🎉',
+                    style: TextStyle(
+                      fontSize: 20, 
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Nikmati harimu atau tambah tugas baru.',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ],
               ),
             ),
           ),
@@ -214,27 +242,45 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildTaskListItem(BuildContext context, Task task) {
-    return TaskTile(
-      task: task,
-      onStatusChanged: (bool? newValue) {
-        if (newValue == null) return;
-        onUpdateTask(task, {'status_selesai': newValue});
-      },
-      onStarToggled: () {
-        onUpdateTask(task, {'is_starred': !task.isStarred});
-      },
-      onTap: () async {
-        final bool? dataDiperbarui = await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => TaskDetailScreen(task: task),
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6), 
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.08),
+            spreadRadius: 2,
+            blurRadius: 10,
+            offset: const Offset(0, 2),
           ),
-        );
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: TaskTile(
+          task: task,
+          onStatusChanged: (bool? newValue) {
+            if (newValue == null) return;
+            onUpdateTask(task, {'status_selesai': newValue});
+          },
+          onStarToggled: () {
+            onUpdateTask(task, {'is_starred': !task.isStarred});
+          },
+          onTap: () async {
+            final bool? dataDiperbarui = await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => TaskDetailScreen(task: task),
+              ),
+            );
 
-        if (dataDiperbarui == true) {
-          onRefresh();
-        }
-      },
+            if (dataDiperbarui == true) {
+              onRefresh();
+            }
+          },
+        ),
+      ),
     );
   }
 }
